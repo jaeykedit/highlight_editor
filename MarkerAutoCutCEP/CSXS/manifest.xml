@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="8.0" ExtensionBundleId="com.example.myceppanel" ExtensionBundleVersion="1.0.0"
+    ExtensionBundleName="My CEP Panel" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <ExtensionList>
+        <Extension Id="com.example.myceppanel.panel" Version="1.0.0"/>
+    </ExtensionList>
+    <ExecutionEnvironment>
+        <HostList>
+            <Host Name="PPRO" Version="[14.0,24.0]"/> <!-- Premiere Pro 2020~2024 -->
+        </HostList>
+        <LocaleList>
+            <Locale Code="All"/>
+        </LocaleList>
+        <RequiredRuntimeList>
+            <RequiredRuntime Name="CSXS" Version="8.0"/>
+        </RequiredRuntimeList>
+    </ExecutionEnvironment>
+    <DispatchInfoList>
+        <Extension Id="com.example.myceppanel.panel">
+            <DispatchInfo>
+                <Resources>
+                    <MainPath>./client/index.html</MainPath>
+                    <ScriptPath>./jsx/autoEdit.jsx</ScriptPath>
+                </Resources>
+                <UI>
+                    <Type>Panel</Type>
+                    <MenuName>My CEP Panel</MenuName>
+                    <Geometry>
+                        <Size>
+                            <Height>300</Height>
+                            <Width>400</Width>
+                        </Size>
+                    </Geometry>
+                </UI>
+            </DispatchInfo>
+        </Extension>
+    </DispatchInfoList>
+</ExtensionManifest>
