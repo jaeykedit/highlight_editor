@@ -5,7 +5,7 @@ var videoTrack = sequence.videoTracks[0];
 var projectItem = project.rootItem.children[0]; // 편집에 사용할 클립
 
 // XML 파일 읽기
-var xmlFile = new File("/path/to/your/exported_sequence.xml");
+var xmlFile = new File("C:\Users\admin\Documents\highlight_recorder\dist");
 if (xmlFile.exists) {
     xmlFile.open("r");
     var xmlContent = xmlFile.read();
