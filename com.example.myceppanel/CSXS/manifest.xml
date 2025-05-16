@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="8.0" ExtensionBundleId="com.example.myceppanel" ExtensionBundleVersion="1.0.0"
+<ExtensionManifest Version="11.0" ExtensionBundleId="com.example.myceppanel" ExtensionBundleVersion="1.0.0"
     ExtensionBundleName="My CEP Panel" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <ExtensionList>
-        <Extension Id="com.example.myceppanel.panel" Version="1.0.0"/>
+        <Extension Id="com.example.myceppanel" Version="1.0.0"/>
     </ExtensionList>
     <ExecutionEnvironment>
         <HostList>
-            <Host Name="PPRO" Version="[14.0,24.0]"/> <!-- Premiere Pro 2020~2024 -->
+            <Host Name="PPRO" Version="[14.0,24.6]"/>
         </HostList>
         <LocaleList>
             <Locale Code="All"/>
         </LocaleList>
         <RequiredRuntimeList>
-            <RequiredRuntime Name="CSXS" Version="8.0"/>
+            <RequiredRuntime Name="CSXS" Version="11.0"/>
         </RequiredRuntimeList>
     </ExecutionEnvironment>
     <DispatchInfoList>
-        <Extension Id="com.example.myceppanel.panel">
+        <Extension Id="com.example.myceppanel">
             <DispatchInfo>
                 <Resources>
                     <MainPath>./client/index.html</MainPath>
