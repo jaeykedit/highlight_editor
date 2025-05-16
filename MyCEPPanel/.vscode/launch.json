@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+           "type": "extendscript",
+            "request": "launch",
+            "name": "Launch in Premiere Pro",
+            "target": "premierepro-24.6",
+            "script": "${workspaceFolder}/jsx/autoEdit.jsx",
+            "debugPort": 5500
+        }
+    ]
+}
