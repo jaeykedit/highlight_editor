@@ -1,0 +1,389 @@
+$.runScript = {
+    autoEditByXmemlMarkers: function() {
+        try {
+            // 1. 파일 선택
+            var file = File.openDialog("Select XMEML file", "*.xml");
+            if (!file || !file.exists) {
+                alert("Error: No XMEML file selected!");
+                return "Error";
+            }
+
+            // 문자열 변환
+            var xmemlFilePath = file.fsName + "";
+
+            // 디버깅 로그
+            var logFile = new File(Folder.desktop.fsName + "/premiere_script_log.txt");
+            if (!logFile.open("a")) {
+                alert("Error: Failed to open log file at " + logFile.fsName);
+                return "Error";
+            }
+            var now = new Date();
+            var dateStr = now.getFullYear() + "-" + (now.getMonth() + 1) + "-" + now.getDate() + " " + now.getHours() + ":" + now.getMinutes() + ":" + now.getSeconds();
+            logFile.writeln(dateStr + ": Starting autoEditByXmemlMarkers");
+            logFile.writeln(dateStr + ": xmemlFilePath type: " + typeof xmemlFilePath);
+            logFile.writeln(dateStr + ": xmemlFilePath value: " + xmemlFilePath);
+
+            // 2. 입력 검증
+            if (typeof xmemlFilePath !== 'string') {
+                logFile.writeln(dateStr + ": Error: xmemlFilePath is not a string! Type: " + typeof xmemlFilePath + ", Value: " + xmemlFilePath);
+                logFile.close();
+                alert("Error: xmemlFilePath is not a string! Type: " + typeof xmemlFilePath + ", Value: " + xmemlFilePath);
+                return "Error";
+            }
+
+            var trimmedPath = xmemlFilePath.replace(/^\s+|\s+$/g, "");
+            if (trimmedPath === "") {
+                logFile.writeln(dateStr + ": Error: xmemlFilePath is empty!");
+                logFile.close();
+                alert("Error: xmemlFilePath is empty!");
+                return "Error";
+            }
+
+            xmemlFilePath = trimmedPath;
+
+            // 3. 프로젝트 확인
+            var proj = app.project;
+            if (!proj) {
+                logFile.writeln(dateStr + ": Error: No active project found!");
+                logFile.close();
+                alert("Error: No active project found!");
+                return "Error";
+            }
+
+            // 4. 활성 시퀀스 확인
+            var sequence = proj.activeSequence;
+            if (!sequence) {
+                logFile.writeln(dateStr + ": Error: No active sequence found!");
+                logFile.close();
+                alert("Error: No active sequence found!");
+                return "Error";
+            }
+
+            // 5. 트랙 확인
+            var videoTracks = sequence.videoTracks;
+            if (videoTracks.length < 2) {
+                logFile.writeln(dateStr + ": Error: At least two video tracks are required! Found: " + videoTracks.length + ". Please create a Video 2 track manually.");
+                logFile.close();
+                alert("Error: At least two video tracks are required! Found: " + videoTracks.length + ". Please create a Video 2 track manually in the sequence.");
+                return "Error";
+            }
+
+            // 트랙 잠김 상태 확인 및 해제
+            var videoTrack1 = videoTracks[0];
+            var videoTrack2 = videoTracks[1];
+            if (videoTrack1.isLocked()) {
+                videoTrack1.setLock(false);
+                logFile.writeln(dateStr + ": Video 1 track was locked, unlocked for editing");
+            }
+            if (videoTrack2.isLocked()) {
+                videoTrack2.setLock(false);
+                logFile.writeln(dateStr + ": Video 2 track was locked, unlocked for editing");
+            }
+
+            // Video 1 트랙 클립 상태 로그
+            logFile.writeln(dateStr + ": Video 1 track clips:");
+            for (var j = 0; j < videoTrack1.clips.numItems; j++) {
+                var clip = videoTrack1.clips[j];
+                logFile.writeln(dateStr + ": Clip " + j + ": start=" + clip.start.seconds + "s, end=" + clip.end.seconds + "s, name=" + clip.name);
+            }
+
+            // 파일 이름 추출
+            var fileName = "";
+            var pathParts = xmemlFilePath.split(/[\/\\]/);
+            if (pathParts.length > 0) {
+                fileName = pathParts[pathParts.length - 1];
+            }
+            logFile.writeln(dateStr + ": fileName extracted: " + fileName);
+
+            // 6. XMEML 파일 임포트
+            var itemCountBefore = proj.rootItem.children.numItems;
+            logFile.writeln(dateStr + ": Items before import: " + itemCountBefore);
+
+            var importSuccess = app.project.importFiles([xmemlFilePath]);
+            logFile.writeln(dateStr + ": Import result: " + importSuccess);
+
+            if (!importSuccess) {
+                logFile.writeln(dateStr + ": Error: Failed to import XMEML file! Path: " + xmemlFilePath);
+                logFile.close();
+                alert("Error: Failed to import XMEML file! Path: " + xmemlFilePath);
+                return "Error";
+            }
+
+            var itemCountAfter = proj.rootItem.children.numItems;
+            logFile.writeln(dateStr + ": Items after import: " + itemCountAfter);
+
+            // 7. 프로젝트 루트에서 임포트된 항목 찾기
+            var projectItems = proj.rootItem.children;
+            var xmemlItem = null;
+
+            if (itemCountAfter > itemCountBefore) {
+                logFile.writeln(dateStr + ": New items detected, checking from the end of the project");
+                for (var i = projectItems.numItems - 1; i >= 0; i--) {
+                    var item = projectItems[i];
+                    logFile.writeln(dateStr + ": Checking item " + i + ": " + item.name);
+                    if (item.name === fileName || item.name.indexOf('.xml') !== -1) {
+                        xmemlItem = item;
+                        logFile.writeln(dateStr + ": Using most recently added item: " + item.name);
+                        break;
+                    }
+                }
+            }
+
+            if (!xmemlItem) {
+                logFile.writeln(dateStr + ": Nothing found on quick check, searching through all items...");
+                for (var i = 0; i < projectItems.numItems; i++) {
+                    var item = projectItems[i];
+                    logFile.writeln(dateStr + ": Item " + i + ": " + item.name);
+                    if (item.name === fileName || item.name.indexOf('.xml') !== -1) {
+                        xmemlItem = item;
+                        logFile.writeln(dateStr + ": Found matching item: " + item.name);
+                        break;
+                    }
+                }
+            }
+
+            if (!xmemlItem && itemCountAfter > itemCountBefore) {
+                xmemlItem = projectItems[projectItems.numItems - 1];
+                logFile.writeln(dateStr + ": Using very last item in project: " + xmemlItem.name);
+            }
+
+            if (!xmemlItem) {
+                logFile.writeln(dateStr + ": Error: Imported XMEML item not found in project!");
+                logFile.close();
+                alert("Error: Imported XMEML item not found in project!");
+                return "Error";
+            }
+
+            // 8. XMEML 항목에서 마커 추출
+            var markers = null;
+            if (xmemlItem.type === ProjectItemType.SEQUENCE) {
+                var seq = xmemlItem.getSequence();
+                markers = seq.markers;
+                logFile.writeln(dateStr + ": Item is a sequence, found " + (markers ? markers.numMarkers : 0) + " markers");
+            } else if (xmemlItem.type === ProjectItemType.CLIP || xmemlItem.type === ProjectItemType.BIN) {
+                markers = xmemlItem.getMarkers();
+                logFile.writeln(dateStr + ": Item is a clip/bin, found " + (markers ? markers.numMarkers : 0) + " markers");
+            } else {
+                logFile.writeln(dateStr + ": Item type is: " + xmemlItem.type);
+                logFile.close();
+                alert("Error: Imported XMEML item is not a sequence or clip!");
+                return "Error";
+            }
+
+            if (!markers || markers.numMarkers === 0) {
+                logFile.writeln(dateStr + ": Error: No markers found in imported XMEML!");
+                logFile.close();
+                alert("Error: No markers found in imported XMEML!");
+                return "Error";
+            }
+
+            // 9. 프레임 속도 계산
+            var frameRate = sequence.timebase ? (254016000000 / parseInt(sequence.timebase)) : 60;
+            logFile.writeln(dateStr + ": Calculated frame rate: " + frameRate);
+
+            // 10. 클립 삽입 및 마커 추가
+            var markersProcessed = 0;
+            var seenMarkers = {}; // 중복 마커 감지용
+
+            // Video 2 트랙에 클립 삽입 준비
+            var placeholderClip = null;
+            if (xmemlItem.type === ProjectItemType.CLIP) {
+                placeholderClip = xmemlItem;
+            } else {
+                for (var i = 0; i < projectItems.numItems; i++) {
+                    if (projectItems[i].type === ProjectItemType.CLIP) {
+                        placeholderClip = projectItems[i];
+                        break;
+                    }
+                }
+            }
+
+            if (!placeholderClip) {
+                logFile.writeln(dateStr + ": Error: No suitable clip found for Video 2 insertion!");
+                logFile.close();
+                alert("Error: No suitable clip found for Video 2 insertion!");
+                return "Error";
+            }
+            logFile.writeln(dateStr + ": Placeholder clip for Video 2: " + placeholderClip.name);
+
+            // Video 1 원본 클립 준비
+            var video1Clip = null;
+            for (var i = 0; i < projectItems.numItems; i++) {
+                if (projectItems[i].type === ProjectItemType.CLIP && projectItems[i].name.match(/\.mp4$/i)) {
+                    video1Clip = projectItems[i];
+                    break;
+                }
+            }
+
+            if (!video1Clip) {
+                logFile.writeln(dateStr + ": Error: No suitable video clip found for Video 1!");
+                logFile.close();
+                alert("Error: No suitable video clip found for Video 1!");
+                return "Error";
+            }
+            logFile.writeln(dateStr + ": Video 1 clip: " + video1Clip.name + ", type: " + video1Clip.type);
+
+            // video1Clip 유효성 검사
+            if (video1Clip.isOffline && video1Clip.isOffline()) {
+                logFile.writeln(dateStr + ": Error: Video 1 clip is offline!");
+                logFile.close();
+                alert("Error: Video 1 clip is offline!");
+                return "Error";
+            }
+
+            // 마커 인덱스 기반 순회
+            for (var i = 0; i < markers.numMarkers; i++) {
+                var marker = markers[i];
+                if (!marker) {
+                    logFile.writeln(dateStr + ": Warning: Null marker at index " + i);
+                    continue;
+                }
+
+                // 마커 데이터 추출
+                var startTime = marker.start && marker.start.seconds ? marker.start.seconds : null;
+                var endTime = marker.end && marker.end.seconds ? marker.end.seconds : (startTime ? startTime + 1 : null);
+                var comment = marker.comments || marker.name || "Marker " + (markersProcessed + 1);
+
+                // 시간 검증
+                if (isNaN(startTime) || isNaN(endTime) || startTime < 0 || endTime <= startTime) {
+                    logFile.writeln(dateStr + ": Invalid marker time range (start: " + startTime + ", end: " + endTime + ")");
+                    continue;
+                }
+
+                // 중복 마커 감지
+                var markerKey = startTime + ":" + endTime + ":" + comment;
+                if (seenMarkers[markerKey]) {
+                    logFile.writeln(dateStr + ": Skipping duplicate marker at " + startTime + "s: " + comment);
+                    continue;
+                }
+                seenMarkers[markerKey] = true;
+
+                // 초 단위로 로그
+                logFile.writeln(dateStr + ": Processing marker " + (markersProcessed + 1) + ": " + comment + " (" + startTime + "s - " + endTime + "s)");
+
+                // Video 2 트랙에 클립 삽입
+                var insertedClip = null;
+                try {
+                    // 기존 클립과 겹침 확인
+                    var clips = videoTrack2.clips;
+                    var overlap = false;
+                    for (var j = 0; j < clips.numItems; j++) {
+                        var clip = clips[j];
+                        if (clip.start.seconds < endTime && clip.end.seconds > startTime) {
+                            overlap = true;
+                            logFile.writeln(dateStr + ": Skipping clip insertion at " + startTime + "s due to overlap with existing clip");
+                            break;
+                        }
+                    }
+
+                    if (!overlap) {
+                        var duration = endTime - startTime;
+                        var time = new Time();
+                        time.seconds = startTime;
+                        videoTrack2.insertClip(placeholderClip, time, 1, 0); // Video Track 1, Audio Track 0
+                        clips = videoTrack2.clips;
+                        insertedClip = clips[clips.numItems - 1];
+                        if (insertedClip) {
+                            var endTimeObj = new Time();
+                            endTimeObj.seconds = endTime;
+                            insertedClip.end = endTimeObj;
+                            logFile.writeln(dateStr + ": Clip inserted on Video 2 at " + startTime + "s with duration " + duration + "s");
+                        } else {
+                            throw new Error("Inserted clip not found on Video 2");
+                        }
+                    }
+                } catch (e) {
+                    logFile.writeln(dateStr + ": Failed to insert clip on Video 2 at " + startTime + "s: " + e.toString());
+                }
+
+                // 시퀀스에 마커 추가
+                try {
+                    var seqMarkers = sequence.markers;
+                    var time = new Time();
+                    time.seconds = startTime;
+                    var newMarker = seqMarkers.createMarker(time);
+                    newMarker.name = comment;
+                    var endTimeObj = new Time();
+                    endTimeObj.seconds = endTime;
+                    newMarker.end = endTimeObj;
+                    logFile.writeln(dateStr + ": Marker " + (markersProcessed + 1) + " created successfully on sequence at " + startTime + "s");
+                } catch (e) {
+                    logFile.writeln(dateStr + ": Failed to create marker on sequence at " + startTime + "s: " + e.toString());
+                }
+
+                // Video 1에 컷 적용
+                try {
+                    videoTrack1.setMute(false);
+                    videoTrack2.setMute(true);
+
+                    // 대상 클립 검색
+                    var clips = videoTrack1.clips;
+                    var targetClip = null;
+                    for (var j = 0; j < clips.numItems; j++) {
+                        var clip = clips[j];
+                        if (clip.start.seconds <= startTime && clip.end.seconds >= endTime) {
+                            targetClip = clip;
+                            break;
+                        }
+                    }
+
+                    if (targetClip) {
+                        // 새로운 클립 삽입으로 분할
+                        var time = new Time();
+                        time.seconds = startTime;
+                        logFile.writeln(dateStr + ": Attempting to insert clip on Video 1: " + video1Clip.name + ", at " + startTime + "s");
+                        videoTrack1.insertClip(video1Clip, time, 0, 0); // Video Track 0, Audio Track 0
+                        clips = videoTrack1.clips;
+                        var newClip = null;
+                        for (var j = 0; j < clips.numItems; j++) {
+                            if (Math.abs(clips[j].start.seconds - startTime) < 0.01) {
+                                newClip = clips[j];
+                                break;
+                            }
+                        }
+                        if (newClip) {
+                            var endTimeObj = new Time();
+                            endTimeObj.seconds = endTime;
+                            newClip.end = endTimeObj;
+                            logFile.writeln(dateStr + ": Cut applied on Video 1 by inserting clip from " + startTime + "s to " + endTime + "s");
+                        } else {
+                            throw new Error("Inserted clip not found on Video 1");
+                        }
+                    } else {
+                        logFile.writeln(dateStr + ": No suitable clip found on Video 1 for cut at " + startTime + "s");
+                    }
+                } catch (e) {
+                    logFile.writeln(dateStr + ": Failed to apply cut on Video 1 at " + startTime + "s or " + endTime + "s: " + e.toString());
+                }
+
+                markersProcessed++;
+            }
+
+            logFile.writeln(dateStr + ": Successfully processed " + markersProcessed + " markers");
+            logFile.close();
+
+            alert("Success: Markers added to sequence, clips inserted on Video 2, and cuts attempted on Video 1. Check sequence markers and Video 1 cuts manually.");
+            return "Success";
+        } catch (e) {
+            var errorMsg = "Error: " + e.toString();
+            if (e.lineNumber) {
+                errorMsg += " at line " + e.lineNumber;
+            }
+            if (e.fileName) {
+                errorMsg += " in " + e.fileName;
+            }
+
+            try {
+                if (logFile && logFile.open) {
+                    logFile.writeln(dateStr + ": " + errorMsg);
+                    logFile.close();
+                }
+            } catch (logError) {
+                // 로깅 오류 무시
+            }
+
+            alert(errorMsg);
+            return "Error";
+        }
+    }
+};

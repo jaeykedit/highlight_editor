@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>XMEML 기반 자동 편집</title>
+    <script src="./lib/CSInterface.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10px;
+            background-color: #f0f0f0;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .loading::after {
+            content: " ⏳";
+        }
+        #status {
+            margin-top: 10px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h2>XMEML 마커 기반 자동 편집</h2>
+    <button onclick="startAutoEdit()">XML 임포트 및 자동 편집</button>
+    <div id="status">상태: 준비 완료</div>
+
+    <script>
+        var csInterface = new CSInterface();
+
+        function startAutoEdit() {
+            console.log("Starting autoEditByXmemlMarkers");
+            const button = document.querySelector('button');
+            button.disabled = true;
+            button.classList.add('loading');
+            document.getElementById('status').innerText = '상태: 편집 처리 중...';
+
+            const script = `
+                $.runScript.autoEditByXmemlMarkers();
+            `;
+
+            csInterface.evalScript(script, (result) => {
+                button.disabled = false;
+                button.classList.remove('loading');
+                console.log("EvalScript result:", result);
+                if (result === "Success") {
+                    document.getElementById('status').innerText = '상태: 편집 성공적으로 완료';
+                } else {
+                    document.getElementById('status').innerText = `상태: 편집 중 오류 발생 - ${result || '알 수 없는 오류'}`;
+                    console.error('EvalScript error:', result);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
